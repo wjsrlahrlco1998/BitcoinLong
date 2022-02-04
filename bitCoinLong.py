@@ -84,6 +84,7 @@ list_coin = pyupbit.get_tickers(fiat="KRW")
 
 # 상승장 판단
 best_coin, best_k = find_best(list_coin)
+print("Best_Coin : ", best_coin)
 
 # 로그인
 upbit = pyupbit.Upbit(access, secret)
@@ -98,6 +99,9 @@ while True:
             target_price = get_target_price(best_coin, best_k)
             ma15 = get_ma15(best_coin)
             current_price = get_current_price(best_coin)
+            print("Current : ", current_price)
+            print("Target : ", target_price)
+            print("ma15 : ", ma15)
             if target_price < current_price and ma15 < current_price:
                 krw = get_balance("KRW")
                 if krw > 5000:
