@@ -63,6 +63,8 @@ coin_list = pyupbit.get_tickers(fiat="KRW")
 rand_coin = random.choice(coin_list)
 k = get_best_k(rand_coin)
 
+choice_count = 0
+
 # 로그인
 upbit = pyupbit.Upbit(access, secret)
 print("Autotrade start")
@@ -81,6 +83,12 @@ while True:
                 if krw > 5000:
                     upbit.buy_market_order(rand_coin, krw*0.9995)
                     print(now, "Buy :", rand_coin)
+                    choice_count = 1
+            else:
+                if choice_count == 0:
+                    rand_coin = random.choice(coin_list)
+                    k = get_best_k(rand_coin)
+                
         else:
             numberOfCoin = get_balance(rand_coin[4:])
             if numberOfCoin > (5000 / get_current_price(rand_coin)):
@@ -88,6 +96,7 @@ while True:
                 print(now, "Sell :", rand_coin)
                 rand_coin = random.choice(coin_list)
                 k = get_best_k(rand_coin)
+                choice_count = 0
         time.sleep(1)
     except Exception as e:
         print(e)
