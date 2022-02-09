@@ -57,9 +57,17 @@ def get_best_k(ticker):
 
     return best_k
 
+def colander_list(list):
+    for i in list:
+        df = pyupbit.get_ohlcv(i, count=7)
+        if df is None or len(df) != 7:
+            list.remove(i)
+    return list
+
 ########################################################################
 # (초기)코인설정
 coin_list = pyupbit.get_tickers(fiat="KRW")
+coin_list = colander_list(coin_list)
 rand_coin = random.choice(coin_list)
 k = get_best_k(rand_coin)
 
@@ -88,7 +96,7 @@ while True:
                 if choice_count == 0:
                     rand_coin = random.choice(coin_list)
                     k = get_best_k(rand_coin)
-                
+
         else:
             numberOfCoin = get_balance(rand_coin[4:])
             if numberOfCoin > (5000 / get_current_price(rand_coin)):
