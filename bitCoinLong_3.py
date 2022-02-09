@@ -4,8 +4,8 @@ import datetime
 import random
 import numpy as np
 
-access = ""
-secret = ""
+access = "bhyj0t5rvALUenExGy6BBQUjGlP6Ig6hqjxyv8s0"
+secret = "jKHsaaI156pm86w6Z7JaSl7qbW8xkgHGvuPmSzsO"
 
 ########################################################################
 
@@ -58,11 +58,13 @@ def get_best_k(ticker):
     return best_k
 
 def colander_list(list):
+    temp_list = []
     for i in list:
         df = pyupbit.get_ohlcv(i, count=7)
-        if df is None or len(df) != 7:
-            list.remove(i)
-    return list
+        if df is not None:
+            if len(df) == 7:
+                temp_list.append(i)
+    return temp_list
 
 ########################################################################
 # (초기)코인설정
