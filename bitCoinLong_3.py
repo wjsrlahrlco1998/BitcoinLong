@@ -4,8 +4,8 @@ import datetime
 import random
 import numpy as np
 
-access = "bhyj0t5rvALUenExGy6BBQUjGlP6Ig6hqjxyv8s0"
-secret = "jKHsaaI156pm86w6Z7JaSl7qbW8xkgHGvuPmSzsO"
+access = ""
+secret = ""
 
 ########################################################################
 
