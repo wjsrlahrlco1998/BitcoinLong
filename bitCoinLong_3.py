@@ -1,6 +1,7 @@
 import pyupbit
 import time
 import datetime
+import random
 import numpy as np
 
 access = ""
@@ -9,12 +10,34 @@ secret = ""
 ########################################################################
 
 def get_start_time(ticker):
-    """시작 시간 조회"""
     df = pyupbit.get_ohlcv(ticker, interval="day", count=1)
     start_time = df.index[0]
     return start_time
 
-def get_best(ticker):
+def get_target_price(ticker, k):
+    df = pyupbit.get_ohlcv(ticker, interval="day", count=2)
+    target_price = df.iloc[0]['close'] + (df.iloc[0]['high'] - df.iloc[0]['low']) * k
+    return target_price
+
+def get_ma15(ticker):
+    df = pyupbit.get_ohlcv(ticker, interval="day", count=15)
+    ma15 = df['close'].rolling(15).mean().iloc[-1]
+    return ma15
+
+def get_balance(ticker):
+    balances = upbit.get_balances()
+    for b in balances:
+        if b['currency'] == ticker:
+            if b['balance'] is not None:
+                return float(b['balance'])
+            else:
+                return 0
+    return 0
+
+def get_current_price(ticker):
+    return pyupbit.get_orderbook(ticker=ticker)["orderbook_units"][0]["ask_price"]
+
+def get_best_k(ticker):
     best_ror = 0
     best_k = 0.5
     for k in np.arange(0.1, 1.0, 0.1):
@@ -32,115 +55,40 @@ def get_best(ticker):
             best_ror = ror
             best_k = k
 
-    return best_k, best_ror
+    return best_k
 
-def get_target_price(ticker, k):
-    """변동성 돌파 전략으로 매수 목표가 조회"""
-    df = pyupbit.get_ohlcv(ticker, interval="day", count=2)
-    target_price = df.iloc[0]['close'] + (df.iloc[0]['high'] - df.iloc[0]['low']) * k
-    return target_price
-
-def get_ma15(ticker):
-    """15일 이동 평균선 조회"""
-    df = pyupbit.get_ohlcv(ticker, interval="day", count=15)
-    ma15 = df['close'].rolling(15).mean().iloc[-1]
-    return ma15
-
-def get_balance(ticker):
-    """잔고 조회"""
-    balances = upbit.get_balances()
-    for b in balances:
-        if b['currency'] == ticker:
-            if b['balance'] is not None:
-                return float(b['balance'])
-            else:
-                return 0
-    return 0
-
-def get_balance_coin():
-    #보유코인 잔고만 조회
-    balances = upbit.get_balances()
-    won = "KRW-"
-    for b in balances:
-        if b['currency'] != "KRW":
-            coin_name = won + b['currency']
-            if (b['balance'] is not None) and float(b['balance']) > (5000 / get_current_price(won + b['currency'])):
-                return coin_name, float(b['balance'])
-    return 0
-
-def get_current_price(ticker):
-    """현재가 조회"""
-    return pyupbit.get_orderbook(ticker=ticker)["orderbook_units"][0]["ask_price"]
-
-def find_best(list):
-    b_coin = ""
-    b_ror = 0
-    b_k = 0.5
-    ror = 0
-    k = 0.5
-    for i in list:
-        try:
-            k, ror = get_best(i)
-            if ror > b_ror:
-                b_ror = ror
-                b_coin = i
-                b_k = k
-        except Exception as e:
-            print(e)
-    return b_coin, b_k
 ########################################################################
-
-#암호화폐 목록
-list_coin = pyupbit.get_tickers(fiat="KRW")
-
-# 상승장 판단
-best_coin, best_k = find_best(list_coin)
-print("Best_Coin : ", best_coin)
+# (초기)코인설정
+coin_list = pyupbit.get_tickers(fiat="KRW")
+rand_coin = random.choice(coin_list)
+k = get_best_k(rand_coin)
 
 # 로그인
 upbit = pyupbit.Upbit(access, secret)
 print("Autotrade start")
 
-buy_price = 9999999999
-max_benefit = 1.1
-
 while True:
     try:
         now = datetime.datetime.now()
-        start_time = get_start_time(best_coin)
+        start_time = get_start_time(rand_coin)
         end_time = start_time + datetime.timedelta(days=1)
-        current_price = get_current_price(best_coin)
-        if start_time < now < end_time - datetime.timedelta(seconds=10) and current_price < buy_price * max_benefit:
-            target_price = get_target_price(best_coin, best_k)
-            ma15 = get_ma15(best_coin)
-            current_price = get_current_price(best_coin)
+        if start_time < now < end_time - datetime.timedelta(seconds=10):
+            target_price = get_target_price(rand_coin, k)
+            ma15 = get_ma15(rand_coin)
+            current_price = get_current_price(rand_coin)
             if target_price < current_price and ma15 < current_price:
                 krw = get_balance("KRW")
                 if krw > 5000:
-                    upbit.buy_market_order(best_coin, krw*0.9995)
-                    buy_price = current_price
-                    print(now, "Buy :", best_coin)
-            else:
-                # 차선책 코인 찾기
-                # list_coin에서 지금의 코인을 제거
-                list_coin.remove(best_coin)
-                best_coin, best_k = find_best(list_coin)
-                print(now, "Coin Resetting : ", best_coin)
+                    upbit.buy_market_order(rand_coin, krw*0.9995)
+                    print(now, "Buy :", rand_coin)
         else:
-            btc = get_balance(best_coin[4:])
-            buy_price = 99999999;
-            if btc > (5000 / get_current_price(best_coin)):
-                upbit.sell_market_order(best_coin, btc)
-                print(now, "Sell :", best_coin)
-                # 코인 재설정
-                list_coin = pyupbit.get_tickers(fiat="KRW")
-                best_coin, best_k = find_best(list_coin)
-            else:
-                # 코인 재설정
-                best_coin, best_k = find_best(list_coin)
-                print(now, "Coin Resetting : ", best_coin)
+            numberOfCoin = get_balance(rand_coin[4:])
+            if numberOfCoin > (5000 / get_current_price(rand_coin)):
+                upbit.sell_market_order(rand_coin, numberOfCoin)
+                print(now, "Sell :", rand_coin)
+                rand_coin = random.choice(coin_list)
+                k = get_best_k(rand_coin)
         time.sleep(1)
     except Exception as e:
-        now = datetime.datetime.now()
-        print(now, e)
+        print(e)
         time.sleep(1)
